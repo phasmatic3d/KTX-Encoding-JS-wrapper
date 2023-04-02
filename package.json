@@ -1,0 +1,30 @@
+{
+    "name": "libktx",
+    "version": "0.0.1",
+    "description": "KTX with decoding and encoding support",
+    "main": "dist/libktx.js",
+    "homepage": "",
+    "directories": {
+      "doc": "doc",
+      "example": "examples"
+    },
+    "repository": {
+      "type": "git",
+      "url": ""
+    },
+    "files": [
+      "doc",
+      "dist/*.js",
+      "dist/*.wasm"
+    ],
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+      "web",
+      "ktx",
+      "compression"
+    ],
+    "author": "Phasmatic PC",
+    "license": "Apache-2.0"
+  }
