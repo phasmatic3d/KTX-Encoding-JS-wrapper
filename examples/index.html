@@ -67,12 +67,14 @@ function test_target_type(Module) {
 function encode(raw_data, width, height) {
   TOKTX().then(function(Module) {
     //const vec = test_ktx2(Module);
-    var x = new Module.MyStruct();
-x.a = 10;
-x.b = 20;
-x.c = 30;
-var y = Module.Foo(x, 21);
-console.log(y, y.a, y.b, y.c);
+    var x = new Module.toktxOptions();
+    console.log(Module.khr_df_transfer_e.KHR_DF_TRANSFER_NTSC)
+    x.cubemap = 10;
+    x.filter = "hello";
+    x.wrapMode = 2;
+    x.convert_oetf = Module.khr_df_transfer_e.KHR_DF_TRANSFER_NTSC;
+    var y = Module.Foo(x, 21);
+console.log(y, y.cubemap);
 
 x.delete();
 y.delete();
