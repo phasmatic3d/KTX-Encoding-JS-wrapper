@@ -323,8 +323,8 @@ Create a KTX file from JPEG, PNG or netpbm format files.
 #define QUOTE(x) #x
 #define STR(x) QUOTE(x)
 
-string myversion(STR(SRC_VERSION));
-string mydefversion(STR(SRC_DEFAULT_VERSION));
+string myversion(STR(TOKTX_JS_VERSION));
+string mydefversion(STR(TOKTX_JS_DEFAULT_VERSION));
 
 class toktxApp : public scApp {
   public:
@@ -654,30 +654,103 @@ EMSCRIPTEN_BINDINGS(toktx) {
     emscripten::function("toktx", &toktx);
 }
 
-struct MyStruct {
-  double a, b, c;
+struct toktxOptions {
+      int          automipmap;
+        int          cubemap;
+        int          genmipmap;
+        int          metadata;
+        string       filter;
+        float        filterScale;
+        int          wrapMode;
+        int          mipmap;
+        int          two_d;
+        khr_df_transfer_e convert_oetf;
+        /*khr_df_transfer_e assign_oetf;
+        khr_df_primaries_e assign_primaries;
+        int          useStdin;
+        int          lower_left_maps_to_s0t0;
+        int          warn;
+        //struct mipgenOptions gmopts;
+        unsigned int depth;
+        unsigned int layers;
+        unsigned int levels;
+        float        scale;
+        int          resize;*/
 };
 
-MyStruct Foo(const MyStruct x, double y) {
-  MyStruct r;
-  r.a = x.a;
-  r.b = x.b;
-  r.c = y;
+toktxOptions Foo(const toktxOptions x, double y) {
+  toktxOptions r;
+  r.cubemap = 111;
+  printf("Cubemap %d\n", x.cubemap);
+  printf("Cubemap %s\n", x.filter.c_str());
+  printf("Cubemap %d\n", x.wrapMode);
+  printf("Cubemap %d\n", x.convert_oetf);
+  //r.a = x.a;
+  //r.b = x.b;
+  //r.c = y;
   return r;
 }
 
-EMSCRIPTEN_BINDINGS(my_struct) {
-  emscripten::class_<MyStruct>("MyStruct")
+EMSCRIPTEN_BINDINGS(toktxOptions) {
+  emscripten::class_<toktxOptions>("toktxOptions")
     .constructor<>()
-    .property("a", &MyStruct::a)
-    .property("b", &MyStruct::b)
-    .property("c", &MyStruct::c)
+    .property("automipmap", &toktxOptions::automipmap)
+    .property("cubemap", &toktxOptions::cubemap)
+    .property("genmipmap", &toktxOptions::genmipmap)
+    .property("metadata", &toktxOptions::metadata)
+    .property("filter", &toktxOptions::filter)
+    .property("filterScale", &toktxOptions::filterScale)
+    .property("wrapMode", &toktxOptions::wrapMode)
+    .property("mipmap", &toktxOptions::mipmap)
+    .property("two_d", &toktxOptions::two_d)
+    .property("convert_oetf", &toktxOptions::convert_oetf)
     ;
 
   emscripten::function("Foo", &Foo);
 }
 
+EMSCRIPTEN_BINDINGS(khr_df_transfer_e) {
+    enum_<khr_df_transfer_e>("khr_df_transfer_e")
+        .value("KHR_DF_TRANSFER_UNSPECIFIED", KHR_DF_TRANSFER_UNSPECIFIED)
+        .value("KHR_DF_TRANSFER_LINEAR", KHR_DF_TRANSFER_LINEAR)
+        .value("KHR_DF_TRANSFER_SRGB", KHR_DF_TRANSFER_SRGB)
+        .value("KHR_DF_TRANSFER_ITU", KHR_DF_TRANSFER_ITU)
+        .value("KHR_DF_TRANSFER_NTSC", KHR_DF_TRANSFER_NTSC)
+        .value("KHR_DF_TRANSFER_SLOG", KHR_DF_TRANSFER_SLOG)
+        .value("KHR_DF_TRANSFER_SLOG2", KHR_DF_TRANSFER_SLOG2)
+        .value("KHR_DF_TRANSFER_BT1886", KHR_DF_TRANSFER_BT1886)
+        .value("KHR_DF_TRANSFER_HLG_OETF", KHR_DF_TRANSFER_HLG_OETF)
+        .value("KHR_DF_TRANSFER_HLG_EOTF", KHR_DF_TRANSFER_HLG_EOTF)
+        .value("KHR_DF_TRANSFER_PQ_EOTF", KHR_DF_TRANSFER_PQ_EOTF)
+        .value("KHR_DF_TRANSFER_PQ_OETF", KHR_DF_TRANSFER_PQ_OETF)
+        .value("KHR_DF_TRANSFER_DCIP3", KHR_DF_TRANSFER_DCIP3)
+        .value("KHR_DF_TRANSFER_PAL_OETF", KHR_DF_TRANSFER_PAL_OETF)
+        .value("KHR_DF_TRANSFER_PAL625_EOTF", KHR_DF_TRANSFER_PAL625_EOTF)
+        .value("KHR_DF_TRANSFER_ST240", KHR_DF_TRANSFER_ST240)
+        .value("KHR_DF_TRANSFER_ACESCC", KHR_DF_TRANSFER_ACESCC)
+        .value("KHR_DF_TRANSFER_ACESCCT", KHR_DF_TRANSFER_ACESCCT)
+        .value("KHR_DF_TRANSFER_ADOBERGB", KHR_DF_TRANSFER_ADOBERGB)
+        .value("KHR_DF_TRANSFER_MAX", KHR_DF_TRANSFER_MAX)
+        ;
+}
 
+EMSCRIPTEN_BINDINGS(khr_df_primaries_e) {
+    enum_<khr_df_primaries_e>("khr_df_primaries_e")
+        .value("KHR_DF_PRIMARIES_UNSPECIFIED", KHR_DF_PRIMARIES_UNSPECIFIED)
+        .value("KHR_DF_PRIMARIES_BT709", KHR_DF_PRIMARIES_BT709)
+        .value("KHR_DF_PRIMARIES_SRGB", KHR_DF_PRIMARIES_SRGB)
+        .value("KHR_DF_PRIMARIES_BT601_EBU", KHR_DF_PRIMARIES_BT601_EBU)
+        .value("KHR_DF_PRIMARIES_BT601_SMPTE", KHR_DF_PRIMARIES_BT601_SMPTE)
+        .value("KHR_DF_PRIMARIES_BT2020", KHR_DF_PRIMARIES_BT2020)
+        .value("KHR_DF_PRIMARIES_CIEXYZ", KHR_DF_PRIMARIES_CIEXYZ)
+        .value("KHR_DF_PRIMARIES_NTSC1953", KHR_DF_PRIMARIES_NTSC1953)
+        .value("KHR_DF_PRIMARIES_PAL525", KHR_DF_PRIMARIES_PAL525)
+        .value("KHR_DF_PRIMARIES_PAL525", KHR_DF_PRIMARIES_PAL525)
+        .value("KHR_DF_PRIMARIES_DISPLAYP3", KHR_DF_PRIMARIES_DISPLAYP3)
+        .value("KHR_DF_PRIMARIES_ADOBERGB", KHR_DF_PRIMARIES_ADOBERGB)
+        .value("KHR_DF_PRIMARIES_MAX", KHR_DF_PRIMARIES_MAX)
+        ;
+}
 
 int _tmain(int argc, _TCHAR* argv[])
 {
