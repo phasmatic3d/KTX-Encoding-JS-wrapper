@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>simple Javascript KTX encoding and decoding demo, using Web-Assembly (WASM)</title>
+  <script type="text/javascript">
+    var TOKTX = {
+      noInitialRun : true
+    };
+  </script>
+  <script type="text/javascript">
+
+'use strict';
+
+
+function init() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'toktx.wasm', true);
+  xhr.responseType = 'arraybuffer';
+  xhr.onload = function() {
+    TOKTX.wasmBinary = xhr.response;
+    var script = document.createElement('script');
+    script.src = "toktx.js";
+    document.body.appendChild(script);
+  };
+  xhr.send(null);
+}
+window.onload = init;
+
+function test_ktx2(Module) {
+  const vec = new Module.StringList();
+
+  // FIrst argument
+  vec.push_back("toktx");
+
+  // Options
+  vec.push_back("--t2");
+
+  // Output file
+  vec.push_back("tom.ktx2");
+  vec.push_back("tom.png");
+
+  return vec;
+}
+
+function test_target_type(Module) {
+  const vec = new Module.StringList();
+
+  // FIrst argument
+  vec.push_back("toktx");
+
+  // Options
+  vec.push_back("--target_type");
+  vec.push_back("rgb");
+
+  vec.push_back("--input_swizzle");
+  vec.push_back("rrbb");
+
+  // Output file
+  vec.push_back("tom.ktx2");
+  vec.push_back("tom.png");
+
+  return vec;
+}
+
+function encode(raw_data, width, height) {
+  TOKTX().then(function(Module) {
+    //const vec = test_ktx2(Module);
+    var x = new Module.MyStruct();
+x.a = 10;
+x.b = 20;
+x.c = 30;
+var y = Module.Foo(x, 21);
+console.log(y, y.a, y.b, y.c);
+
+x.delete();
+y.delete();
+    const vec = test_target_type(Module);
+    const buffer = new Uint8ClampedArray([1, 2, 3, 4]);
+
+    Module.toktx(vec, buffer, 1024, 1024);
+
+    vec.delete();
+    //toktxMain(11, 12);
+
+  });
+}
+
+function decode(webp_data, canvas_id) {
+  var result;
+  var decoded_data = {data: new Uint8ClampedArray([]), width: -1, height: -1};
+  if (Module["asm"] != undefined) {
+    // wrapper for the function decoding a WebP into a canvas object
+    const toktxMain = Module.cwrap('toktxMain', 'number', ['number', 'number']);
+    const vec = new Module.StringList();
+    vec.push_back("One");
+    vec.push_back("Two");
+    vec.push_back("1.234");
+    vec.push_back("Four");
+  } else {
+    result = "WASM module not finished loading! Please retry";
+  }
+  // display timing result
+  var speed_result = document.getElementById('timing');
+  if (speed_result != null) {
+    speed_result.innerHTML = '<p>'+ result + '</p>';
+  }
+  return decoded_data;
+}
+
+function base64( buffer ) {
+  if (typeof(buffer) === "string") return window.btoa( buffer );
+
+  var binary = '';
+  const bytes = new Uint8Array( buffer );
+  const len = bytes.byteLength;
+  for (var i = 0; i < len; i++) {
+      binary += String.fromCharCode( bytes[ i ] );
+  }
+  
+  return window.btoa( binary );
+}
+
+function downloadBinaryFile(filename, data) {
+  var element = document.createElement('a');
+  element.setAttribute('href', 'data:application/octet-stream;base64,' + base64(data));
+  element.setAttribute('download', filename);
+
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+
+  document.body.removeChild(element);
+}
+
+const loadImageGradientData = (width, height) => {
+  const data = new Uint8ClampedArray(width * height * 4);
+
+  for (let i = 0; i < height; i++) {
+    for (let j = 0; j < width; j++) {
+      const v = Math.trunc( ( i / height ) * 255);
+      data[4 * (i * width + j) + 0] = v;
+      data[4 * (i * width + j) + 1] = v;
+      data[4 * (i * width + j) + 2] = v;
+      data[4 * (i * width + j) + 3] = 255 - v;
+    }
+  }
+  return data;
+}
+
+const writeImagePNG = (data, width, height) => {
+  const canvas = document.createElement('canvas');
+  canvas.style.width = width;
+  canvas.style.height = height;
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext('2d');
+  const image_data = new ImageData(data, width, height);
+  context.putImageData(image_data, 0, 0);
+  const data_url = canvas.toDataURL("image/png");
+  const data_byte_string = window.atob(data_url.split(',')[1]);
+  downloadBinaryFile("decoded_image.png", data_byte_string);
+};
+
+function encodeGradient() {
+  const width = 1024;
+  const height = 1024;
+  const raw_data = loadImageGradientData(width, height);
+  const encoded_data = encode(raw_data, width, height);
+}
+
+function decodeFile(filename) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', filename);
+  xhr.responseType = 'arraybuffer';
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState == 4 && xhr.status == 200) {
+      const webp_data = new Uint8Array(xhr.response);
+      const image = decode(webp_data);
+      writeImagePNG(image.data, image.width, image.height);
+    }
+  };
+  xhr.send();
+}
+
+  </script>
+</head>
+
+<body>
+  <p>
+    <strong>toKTX demo using Web-Assembly</strong> -
+  </p>
+  <p>
+    WASM version of the toktx program compiled with 
+    <a href="https://github.com/kripken/emscripten/wiki">Emscripten</a>.
+  </p>
+  <p id="image_ktx">
+    <input type="button" value="KTX Encode"
+           onclick="encodeGradient()">
+  </p>
+  </body>
+</html>
