@@ -42,18 +42,15 @@ set(
 
 add_executable(toktx 
   ${KTX_SOURCE_DIR}/lib/basisu/encoder/jpgd.cpp
-  ${KTX_SOURCE_DIR}/lib/basisu/encoder/jpgd.h
   ${KTX_SOURCE_DIR}/interface/js_binding/ktx_wrapper.cpp 
-  src/image.cc
-  src/image.hpp
-  src/jpgimage.cc
-  src/lodepng.cc
-  src/lodepng.h
-  src/npbmimage.cc
-  src/pngimage.cc
-  src/toktx.cc
+  ${KTX_SOURCE_DIR}/tools/toktx/image.cc
+  ${KTX_SOURCE_DIR}/tools/toktx/jpgimage.cc
+  ${KTX_SOURCE_DIR}/tools/toktx/lodepng.cc
+  ${KTX_SOURCE_DIR}/tools/toktx/npbmimage.cc
+  ${KTX_SOURCE_DIR}/tools/toktx/pngimage.cc
+  src/toktx_js/toktx_wrapper.cc
 )
-create_version_header( src toktx )
+create_version_header( src/toktx_js toktx )
 
 target_link_libraries( toktx ktx objUtil )
 target_include_directories(
