@@ -68,10 +68,14 @@ function encode(raw_data, width, height) {
   TOKTX().then(function(Module) {
     //const vec = test_ktx2(Module);
     var x = new Module.toktxOptions();
-    console.log(Module.khr_df_transfer_e.KHR_DF_TRANSFER_NTSC)
+    console.log(Module.khr_df_transfer_e.KHR_DF_TRANSFER_NTSC);
+    const encoded_data_size_ptr = Module._malloc(4);
+    const raw_data_ptr = Module._malloc(width * height * 4);
     const ktx_options = Module.toktxDefaultOptions();
-    const result = Module.toktx(ktx_options, width, height);
-    
+    const result = Module.toktx(ktx_options, raw_data_ptr, width, height, 4, encoded_data_size_ptr);
+    const encoded_data_size = Module.getValue(encoded_data_size_ptr, 'i32');
+
+    console.log(encoded_data_size);
    /* x.cubemap = 10;
     x.filter = "hello";
     x.wrapMode = 2;
