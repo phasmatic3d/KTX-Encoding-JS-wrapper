@@ -69,7 +69,10 @@ function encode(raw_data, width, height) {
     //const vec = test_ktx2(Module);
     var x = new Module.toktxOptions();
     console.log(Module.khr_df_transfer_e.KHR_DF_TRANSFER_NTSC)
-    x.cubemap = 10;
+    const ktx_options = Module.toktxDefaultOptions();
+    const result = Module.toktx(ktx_options, width, height);
+    
+   /* x.cubemap = 10;
     x.filter = "hello";
     x.wrapMode = 2;
     x.convert_oetf = Module.khr_df_transfer_e.KHR_DF_TRANSFER_NTSC;
@@ -81,11 +84,11 @@ y.delete();
     const vec = test_target_type(Module);
     const buffer = new Uint8ClampedArray([1, 2, 3, 4]);
 
-    Module.toktx(vec, buffer, 1024, 1024);
+    //Module.toktx(vec, buffer, 1024, 1024);
 
     vec.delete();
     //toktxMain(11, 12);
-
+*/
   });
 }
 
