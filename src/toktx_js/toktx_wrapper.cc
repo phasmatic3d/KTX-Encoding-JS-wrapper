@@ -711,8 +711,16 @@ toktxOptions toktxDefaultOptions() {
     return opts;
 }
 
-int toktx(const toktxOptions opts, int width, int height) {
-    return theApp.main(opts);
+uintptr_t toktx(const toktxOptions opts, uintptr_t raw_data_ptr, int width, int height, int comps, uintptr_t encoded_data_size_ptr) {
+    uint8_t* raw_data = reinterpret_cast<uint8_t*>(raw_data_ptr);
+    uint8_t* encoded_data = nullptr;
+    int* encoded_data_size = reinterpret_cast<int*>(encoded_data_size_ptr);
+
+    *encoded_data_size = 11111;
+    
+
+    return reinterpret_cast<uintptr_t>(encoded_data);
+    //return theApp.main(opts);
 }
 
 EMSCRIPTEN_BINDINGS(toktx) {
@@ -1326,6 +1334,22 @@ int toktxApp::main(const toktxOptions& opts) {
                                         faceSlice,
                                         *image,
                                         image->getByteCount());
+
+    if (options.astc || options.etc1s || options.bopts.uastc || options.zcmp) {
+        string& swizzle = options.inputSwizzle.size() == 0 && defaultSwizzle.size() && !options.normalMode
+                        ? defaultSwizzle
+                        : options.inputSwizzle;
+        exitCode = encode((ktxTexture2*)texture, swizzle, "stdout");
+        if (exitCode)
+            return exitCode;
+    }
+    ktx_uint8_t* ktx_data;
+    ktx_size_t   ktx_data_size;
+    ret = ktxTexture_WriteToMemory(ktxTexture(texture), &ktx_data, &ktx_data_size);
+
+    printf("Size %d\n", (int)ktx_data_size);
+    printf("%c %c %c %c %c %c\n", ktx_data[1], ktx_data[2], ktx_data[3], ktx_data[4], ktx_data[5], ktx_data[6]);
+
     // Only an error in this program could lead to ret != SUCCESS
     // hence no user message.
     assert(ret == KTX_SUCCESS);
