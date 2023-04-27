@@ -180,18 +180,38 @@ function encodeGradient() {
   const encoded_data = encode(raw_data, width, height);
 }
 
-function decodeFile(filename) {
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', filename);
-  xhr.responseType = 'arraybuffer';
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState == 4 && xhr.status == 200) {
-      const webp_data = new Uint8Array(xhr.response);
-      const image = decode(webp_data);
-      writeImagePNG(image.data, image.width, image.height);
-    }
-  };
-  xhr.send();
+async function loadImageData (img, flip = false) {
+  const canvas    = document.createElement("canvas");
+  const context   = canvas.getContext("2d");
+  canvas.height = img.height;
+  canvas.width  = img.width;
+            
+  if (flip) {
+    context.translate(0, img.height);
+    context.scale(1, -1);
+  }
+  context.drawImage(img, 0, 0, img.width, img.height);
+
+  const rgba = context.getImageData(0, 0, img.width, img.height).data;
+  return rgba;
+};
+
+async function loadImage(src){
+  return new Promise((resolve, reject) => {
+    let img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  })
+}
+
+async function decodeFile(filename) {
+  const img = await loadImage(filename);
+  const img_data = await loadImageData(img);
+  console.log(img);
+  console.log(img_data);
+
+  encode(img_data, img.width, img.height);
 }
 
   </script>
@@ -207,7 +227,7 @@ function decodeFile(filename) {
   </p>
   <p id="image_ktx">
     <input type="button" value="KTX Encode"
-           onclick="encodeGradient()">
+           onclick="decodeFile('Cube_BaseColor.png')">
   </p>
   </body>
 </html>

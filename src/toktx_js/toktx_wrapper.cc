@@ -719,8 +719,8 @@ uintptr_t toktx(const toktxOptions opts, uintptr_t raw_data_ptr, int width, int 
     *encoded_data_size = 11111;
     
 
-    return reinterpret_cast<uintptr_t>(encoded_data);
-    //return theApp.main(opts);
+    //return reinterpret_cast<uintptr_t>(encoded_data);
+    return theApp.main(opts);
 }
 
 EMSCRIPTEN_BINDINGS(toktx) {
