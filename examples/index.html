@@ -10,6 +10,11 @@
     };
   </script>
   <script type="text/javascript">
+    var LIBKTX = {
+      noInitialRun : true
+    };
+  </script>
+  <script type="text/javascript">
 
 'use strict';
 
@@ -22,6 +27,17 @@ function init() {
     TOKTX.wasmBinary = xhr.response;
     var script = document.createElement('script');
     script.src = "toktx.js";
+    document.body.appendChild(script);
+  };
+  xhr.send(null);
+
+  xhr = new XMLHttpRequest();
+  xhr.open('GET', 'libktx.wasm', true);
+  xhr.responseType = 'arraybuffer';
+  xhr.onload = function() {
+    TOKTX.wasmBinary = xhr.response;
+    var script = document.createElement('script');
+    script.src = "libktx.js";
     document.body.appendChild(script);
   };
   xhr.send(null);
@@ -65,17 +81,46 @@ function test_target_type(Module) {
 }
 
 function encode(raw_data, width, height) {
+  LIBKTX().then(function(Module) {
+    //const texture = new Module.ktxTexture(raw_data);
+    const texture = new Module.ktxTexture(raw_data, 512, 512, 4);
+    const baisu_options = new Module.ktxBasisParams();
+
+    baisu_options.uastc = false;
+    baisu_options.noSSE = true;
+    baisu_options.verbose = false;
+    baisu_options.qualityLevel = 200;
+    baisu_options.compressionLevel = 2;
+    
+    const result = texture.compressBasisU(baisu_options);
+
+    console.log(result);
+
+    downloadBinaryFile('color.ktx2', result);
+  });
+  return;
   TOKTX().then(function(Module) {
     //const vec = test_ktx2(Module);
     var x = new Module.toktxOptions();
     console.log(Module.khr_df_transfer_e.KHR_DF_TRANSFER_NTSC);
     const encoded_data_size_ptr = Module._malloc(4);
     const raw_data_ptr = Module._malloc(width * height * 4);
+    const raw_data_size = raw_data.length * raw_data.BYTES_PER_ELEMENT;
     const ktx_options = Module.toktxDefaultOptions();
-    const result = Module.toktx(ktx_options, raw_data_ptr, width, height, 4, encoded_data_size_ptr);
+    ktx_options.basisParams.normalMap = 1;
+    const dataHeap = new Uint8Array(Module.HEAPU8.buffer, raw_data_ptr, raw_data_size);
+    dataHeap.set(new Uint8Array(raw_data.buffer));
+
+    const encoded_data_ptr = Module.toktx(ktx_options, dataHeap.byteOffset, width, height, 4, encoded_data_size_ptr);
     const encoded_data_size = Module.getValue(encoded_data_size_ptr, 'i32');
 
     console.log(encoded_data_size);
+    console.log(encoded_data_ptr);
+
+    const encoded_data = new Uint8ClampedArray(Module.HEAPU8.buffer, encoded_data_ptr, encoded_data_size);
+
+    downloadBinaryFile('color.ktx2', encoded_data);
+
    /* x.cubemap = 10;
     x.filter = "hello";
     x.wrapMode = 2;

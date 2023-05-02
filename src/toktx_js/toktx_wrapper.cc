@@ -366,6 +366,9 @@ struct toktxOptions {
         ktx_uint32_t zcmpLevel;
         ktx_uint32_t threadCount;
         std::string inputSwizzle;
+
+        ktxBasisParams basisParams;
+        ktxAstcParams astcParams;
 };
 
 class toktxApp : public scApp {
@@ -373,7 +376,9 @@ class toktxApp : public scApp {
     toktxApp();
     virtual ~toktxApp() { };
 
-    int main(const toktxOptions& opts);
+    int main(const toktxOptions& opts, 
+        ktx_uint8_t* raw_data, int width, int height, int comps,
+        ktx_uint8_t** ktx_data, ktx_size_t* ktx_data_size);
     virtual int main(int argc, _TCHAR* argv[]);
     virtual void usage();
 
@@ -680,7 +685,7 @@ imageCount(uint32_t levelCount, uint32_t layerCount,
 }
 
 toktxOptions toktxDefaultOptions() {
-    toktxOptions opts;
+    toktxOptions opts = {0};
     opts.automipmap = 0;
     opts.cubemap = 0;
     opts.genmipmap = 0;
@@ -708,19 +713,43 @@ toktxOptions toktxDefaultOptions() {
     opts.filterScale = 1.0f;
     opts.wrapMode = basisu::Resampler::Boundary_Op::BOUNDARY_CLAMP;
 
+    opts.astc = 0;
+    opts.etc1s = 1;
+
+    opts.basisParams.structSize = sizeof(ktxBasisParams);
+    opts.basisParams.threadCount = 1;
+    opts.basisParams.compressionLevel = KTX_ETC1S_DEFAULT_COMPRESSION_LEVEL - 1;
+    opts.basisParams.qualityLevel = 200;
+    opts.basisParams.normalMap = false;
+    opts.basisParams.separateRGToRGB_A = false;
+    opts.basisParams.preSwizzle = false;
+    opts.basisParams.noEndpointRDO = false;
+    opts.basisParams.noSelectorRDO = false;
+    opts.basisParams.uastc = false; // Default to ETC1S.
+    opts.basisParams.uastcRDO = false;
+    opts.basisParams.uastcFlags = KTX_PACK_UASTC_LEVEL_DEFAULT;
+    opts.basisParams.uastcRDODontFavorSimplerModes = false;
+    opts.basisParams.uastcRDONoMultithreading = true;
+    opts.basisParams.noSSE = true;
+    opts.basisParams.verbose = false; // Default to quiet operation.
+
     return opts;
 }
 
 uintptr_t toktx(const toktxOptions opts, uintptr_t raw_data_ptr, int width, int height, int comps, uintptr_t encoded_data_size_ptr) {
     uint8_t* raw_data = reinterpret_cast<uint8_t*>(raw_data_ptr);
     uint8_t* encoded_data = nullptr;
-    int* encoded_data_size = reinterpret_cast<int*>(encoded_data_size_ptr);
-
-    *encoded_data_size = 11111;
-    
-
+    int* encoded_data_size = reinterpret_cast<int*>(encoded_data_size_ptr);   
+    ktx_size_t ktx_data_size = 0;
     //return reinterpret_cast<uintptr_t>(encoded_data);
-    return theApp.main(opts);
+    theApp.main(opts, raw_data, width, height, comps, &encoded_data, &ktx_data_size);
+
+    *encoded_data_size = (int)ktx_data_size;
+    printf("Size %d\n", (int)*encoded_data_size);
+    printf("Ptr  %d\n", reinterpret_cast<uintptr_t>(encoded_data));
+    printf("%c %c %c %c %c %c\n", encoded_data[1], encoded_data[2], encoded_data[3], encoded_data[4], encoded_data[5], encoded_data[6]);
+
+    return reinterpret_cast<uintptr_t>(encoded_data);
 }
 
 EMSCRIPTEN_BINDINGS(toktx) {
@@ -770,8 +799,61 @@ EMSCRIPTEN_BINDINGS(toktxOptions) {
     .property("normalize", &toktxOptions::normalize)
     .property("normalMode", &toktxOptions::normalMode)
     .property("zcmpLevel", &toktxOptions::zcmpLevel)
+    .property("basisParams", &toktxOptions::basisParams)
+    .property("astcParams", &toktxOptions::astcParams)
     .property("inputSwizzle", &toktxOptions::inputSwizzle);
   
+}
+
+
+EMSCRIPTEN_BINDINGS(ktxAstcParams) {
+  emscripten::class_<ktxAstcParams>("ktxAstcParams")
+    .constructor<>()
+    .property("structSize", &ktxAstcParams::structSize)
+    .property("verbose", &ktxAstcParams::verbose)
+    .property("verbose", &ktxAstcParams::verbose)
+    .property("threadCount", &ktxAstcParams::threadCount)
+    .property("mode", &ktxAstcParams::mode)
+    .property("qualityLevel", &ktxAstcParams::qualityLevel)
+    .property("normalMap", &ktxAstcParams::normalMap)
+    .property("perceptual", &ktxAstcParams::perceptual);
+    //.property("inputSwizzle", &ktxAstcParams::inputSwizzle);
+}
+
+EMSCRIPTEN_BINDINGS(ktxBasisParams) {
+  emscripten::class_<ktxBasisParams>("ktxBasisParams")
+    .constructor<>()
+    .property("structSize", &ktxBasisParams::structSize)
+    .property("uastc", &ktxBasisParams::uastc)
+    .property("verbose", &ktxBasisParams::verbose)
+    .property("noSSE", &ktxBasisParams::noSSE)
+    .property("threadCount", &ktxBasisParams::threadCount)
+
+    /* ETC1S params */
+
+    .property("compressionLevel", &ktxBasisParams::compressionLevel)
+    .property("qualityLevel", &ktxBasisParams::qualityLevel)
+    .property("maxEndpoints", &ktxBasisParams::maxEndpoints)
+    .property("endpointRDOThreshold", &ktxBasisParams::endpointRDOThreshold)
+    .property("maxSelectors", &ktxBasisParams::maxSelectors)
+    .property("selectorRDOThreshold", &ktxBasisParams::selectorRDOThreshold)
+    //.property("inputSwizzle", &ktxBasisParams::inputSwizzle)
+    .property("normalMap", &ktxBasisParams::normalMap)
+    .property("separateRGToRGB_A", &ktxBasisParams::separateRGToRGB_A)
+    .property("preSwizzle", &ktxBasisParams::preSwizzle)
+    .property("noEndpointRDO", &ktxBasisParams::noEndpointRDO)
+    .property("noSelectorRDO", &ktxBasisParams::noSelectorRDO)
+
+    /* UASTC params */
+
+    .property("uastcFlags", &ktxBasisParams::uastcFlags)
+    .property("uastcRDO", &ktxBasisParams::uastcRDO)
+    .property("uastcRDOQualityScalar", &ktxBasisParams::uastcRDOQualityScalar)
+    .property("uastcRDODictSize", &ktxBasisParams::uastcRDODictSize)
+    .property("uastcRDOMaxSmoothBlockErrorScale", &ktxBasisParams::uastcRDOMaxSmoothBlockErrorScale)
+    .property("uastcRDOMaxSmoothBlockStdDev", &ktxBasisParams::uastcRDOMaxSmoothBlockStdDev)
+    .property("uastcRDODontFavorSimplerModes", &ktxBasisParams::uastcRDODontFavorSimplerModes)
+    .property("uastcRDONoMultithreading", &ktxBasisParams::uastcRDONoMultithreading);
 }
 
 EMSCRIPTEN_BINDINGS(khr_df_transfer_e) {
@@ -828,7 +910,7 @@ int _tmain(int argc, _TCHAR* argv[])
     //return theApp.main(argc, argv);
 }
 
-int toktxApp::main(const toktxOptions& opts) {
+int toktxApp::main(const toktxOptions& opts, ktx_uint8_t* raw_data, int width, int height, int comps, ktx_uint8_t** ktx_data, ktx_size_t* ktx_data_size) {
     printf("Version %s\n", version.c_str());
     printf("Version %s\n", defaultVersion.c_str());
 
@@ -883,6 +965,28 @@ int toktxApp::main(const toktxOptions& opts) {
     options.gmopts.filterScale = opts.filterScale;
     options.gmopts.wrapMode = (basisu::Resampler::Boundary_Op)opts.wrapMode;
 
+    options.astc = opts.astc;
+    options.etc1s = opts.etc1s;
+    
+    options.bopts.structSize = opts.basisParams.structSize;
+    options.bopts.threadCount = opts.basisParams.threadCount;
+    options.bopts.compressionLevel = opts.basisParams.compressionLevel;
+    options.bopts.qualityLevel = opts.basisParams.qualityLevel;
+    options.bopts.normalMap = opts.basisParams.normalMap;
+    options.bopts.separateRGToRGB_A = opts.basisParams.separateRGToRGB_A;
+    options.bopts.preSwizzle = opts.basisParams.preSwizzle;
+    options.bopts.noEndpointRDO = opts.basisParams.noEndpointRDO;
+    options.bopts.noSelectorRDO = opts.basisParams.noSelectorRDO;
+    options.bopts.uastc = opts.basisParams.uastc;
+    options.bopts.uastcRDO = opts.basisParams.uastcRDO;
+    options.bopts.uastcFlags = opts.basisParams.uastcFlags;
+    options.bopts.uastcRDODontFavorSimplerModes = opts.basisParams.uastcRDODontFavorSimplerModes;
+    options.bopts.uastcRDONoMultithreading = opts.basisParams.uastcRDONoMultithreading;
+    options.bopts.noSSE = opts.basisParams.noSSE;
+    options.bopts.verbose = opts.basisParams.verbose;
+
+    options.astcopts.structSize = opts.astcParams.structSize;
+
     #define DUMP_OPTIONS
 #ifdef DUMP_OPTIONS
     printf("options.layers %d\n", options.layers);
@@ -903,8 +1007,24 @@ int toktxApp::main(const toktxOptions& opts) {
     printf("options.assign_oetf %d\n", options.assign_oetf);
     printf("options.convert_oetf %d\n", options.convert_oetf);
     printf("options.astc %d\n", options.astc);
+    printf("options.astcopts.structSize %d\n", (int)options.astcopts.structSize);
     printf("options.astcopts.mode %d\n", (int)options.astcopts.mode);
     printf("options.gmopts.filter %s\n", options.gmopts.filter.c_str());
+
+    printf("options.bopts.structSize %d\n", (int)options.bopts.structSize);
+    printf("options.bopts.threadCount %d\n", (int)options.bopts.threadCount);
+    printf("options.bopts.compressionLevel %d\n", (int)options.bopts.compressionLevel);
+    printf("options.bopts.normalMap %d\n", (int)options.bopts.normalMap);
+    printf("options.bopts.separateRGToRGB_A %d\n", (int)options.bopts.separateRGToRGB_A);
+    printf("options.bopts.preSwizzle %d\n", (int)options.bopts.preSwizzle);
+    printf("options.bopts.noEndpointRDO %d\n", (int)options.bopts.noEndpointRDO);
+    printf("options.bopts.uastc %d\n", (int)options.bopts.uastc);
+    printf("options.bopts.uastcRDO %d\n", (int)options.bopts.uastcRDO);
+    printf("options.bopts.uastcFlags %d\n", (int)options.bopts.uastcFlags);
+    printf("options.bopts.uastcRDODontFavorSimplerModes %d\n", (int)options.bopts.uastcRDODontFavorSimplerModes);
+    printf("options.bopts.uastcRDONoMultithreading %d\n", (int)options.bopts.uastcRDONoMultithreading);
+    printf("options.bopts.noSSE %d\n", (int)options.bopts.noSSE);
+    printf("options.bopts.verbose %d\n", (int)options.bopts.verbose);
 #endif
 
     memset(&createInfo, 0, sizeof(createInfo));
@@ -922,18 +1042,15 @@ int toktxApp::main(const toktxOptions& opts) {
     faceSlice = layer = level = 0;
 
     Image* image = nullptr;
-    int width = 512;
-    int height = 512;
-    int comps = 4;
     unsigned char* image_data = (unsigned char*)malloc(width * height * comps);
-    
+    memcpy(image_data, raw_data, width * height * comps);
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             const auto v = (unsigned char)(( (float)i / (float)height ) * 255);
-            image_data[4 * (i * width + j) + 0] = v;
-            image_data[4 * (i * width + j) + 1] = v;
-            image_data[4 * (i * width + j) + 2] = v;
-            image_data[4 * (i * width + j) + 3] = 255;
+            //image_data[4 * (i * width + j) + 0] = v;
+            //image_data[4 * (i * width + j) + 1] = v;
+            //image_data[4 * (i * width + j) + 2] = v;
+            //image_data[4 * (i * width + j) + 3] = 255;
         }
     }
     switch(comps) {
@@ -1343,12 +1460,8 @@ int toktxApp::main(const toktxOptions& opts) {
         if (exitCode)
             return exitCode;
     }
-    ktx_uint8_t* ktx_data;
-    ktx_size_t   ktx_data_size;
-    ret = ktxTexture_WriteToMemory(ktxTexture(texture), &ktx_data, &ktx_data_size);
 
-    printf("Size %d\n", (int)ktx_data_size);
-    printf("%c %c %c %c %c %c\n", ktx_data[1], ktx_data[2], ktx_data[3], ktx_data[4], ktx_data[5], ktx_data[6]);
+    ret = ktxTexture_WriteToMemory(ktxTexture(texture), ktx_data, ktx_data_size);
 
     // Only an error in this program could lead to ret != SUCCESS
     // hence no user message.
