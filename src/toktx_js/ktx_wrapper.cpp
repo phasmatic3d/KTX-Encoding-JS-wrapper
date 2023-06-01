@@ -49,7 +49,7 @@ namespace ktx
         texture(texture&) = delete;
         texture(texture&& other) = default;
 
-        static texture createFromBuffer(const emscripten::val& data, int width, int height, int comps) {
+        static texture createFromBuffer(const emscripten::val& data, int width, int height, int comps, bool srgb) {
             std::vector<uint8_t> bytes{};
             bytes.resize(data["byteLength"].as<size_t>());
             // Yes, this code IS copying the data. Sigh! According to Alon
@@ -66,15 +66,12 @@ namespace ktx
             emscripten::val memoryView = data["constructor"].new_(memory, reinterpret_cast<uintptr_t>(bytes.data()), data["length"].as<uint32_t>());
             memoryView.call<void>("set", data);
 
-            printf("%d\n", bytes.size());
-
             ktxTextureCreateInfo createInfo {0};
             createInfo.numFaces = 1;
             createInfo.numLayers = 1;
             createInfo.numLevels = 1;
             int componentCount = comps;
             int componentSize = 1;
-            bool srgb = true;
             switch (componentCount) {
               case 1:
                 switch (componentSize) {
@@ -175,7 +172,6 @@ namespace ktx
                                      KTX_TEXTURE_CREATE_ALLOC_STORAGE,
                                      (ktxTexture2**)&ptr);
 
-            printf("%d %d\n", ret, ptr);
             ret = ktxTexture_SetImageFromMemory(ptr,
                                             0,
                                             0,
@@ -220,6 +216,11 @@ namespace ktx
             }
 
             return texture(ptr);
+        }
+
+        uint32_t getDataSize() const 
+        {
+          return ktxTexture_GetDataSize(m_ptr.get());
         }
 
         uint32_t baseWidth() const
@@ -284,13 +285,37 @@ namespace ktx
           ktxBasisParams bopts = bopts_input;
           bopts.structSize = sizeof(ktxBasisParams);
           bopts.threadCount = 1;
+          bopts.verbose = false;
           bopts.noSSE = true;
 
-          printf("bopts.structSize %d\n", bopts.structSize);
-          printf("bopts.uastc %d\n", bopts.uastc);
-          printf("bopts.noSSE %d\n", bopts.noSSE);
-          printf("bopts.verbose %d\n", bopts.verbose);
-          printf("bopts.qualityLevel %d\n", bopts.qualityLevel);
+//#define DUMP_OPTIONS
+#ifdef DUMP_OPTIONS
+    printf("options.structSize %d\n", bopts.structSize);
+    printf("options.uastc %d\n", bopts.uastc);
+    printf("options.verbose %d\n", bopts.verbose);
+    printf("options.noSSE %d\n", bopts.noSSE);
+    printf("options.threadCount %d\n", bopts.threadCount);
+    printf("options.ETC1S.compressionLevel %d\n", bopts.compressionLevel);
+    printf("options.ETC1S.qualityLevel %d\n", bopts.qualityLevel);
+    printf("options.ETC1S.maxEndpoints %d\n", bopts.maxEndpoints);
+    printf("options.ETC1S.endpointRDOThreshold %f\n", bopts.endpointRDOThreshold);
+    printf("options.ETC1S.maxSelectors %d\n", bopts.maxSelectors);
+    printf("options.ETC1S.selectorRDOThreshold %f\n", bopts.selectorRDOThreshold);
+    printf("options.ETC1S.normalMap %d\n", bopts.normalMap);
+    printf("options.ETC1S.separateRGToRGB_A %d\n", bopts.separateRGToRGB_A);
+    printf("options.ETC1S.preSwizzle %d\n", bopts.preSwizzle);
+    printf("options.ETC1S.noEndpointRDO %d\n", bopts.noEndpointRDO);
+    printf("options.ETC1S.noSelectorRDO %d\n", bopts.noSelectorRDO);
+
+    printf("options.UASTC.uastcFlags %d\n", bopts.uastcFlags);
+    printf("options.UASTC.uastcRDO %d\n", bopts.uastcRDO);
+    printf("options.UASTC.uastcRDOQualityScalar %f\n", bopts.uastcRDOQualityScalar);
+    printf("options.UASTC.uastcRDODictSize %d\n", bopts.uastcRDODictSize);
+    printf("options.UASTC.uastcRDOMaxSmoothBlockErrorScale %f\n", bopts.uastcRDOMaxSmoothBlockErrorScale);
+    printf("options.UASTC.uastcRDOMaxSmoothBlockStdDev %f\n", bopts.uastcRDOMaxSmoothBlockStdDev);
+    printf("options.UASTC.uastcRDODontFavorSimplerModes %d\n", bopts.uastcRDODontFavorSimplerModes);
+    printf("options.UASTC.uastcRDONoMultithreading %d\n", bopts.uastcRDONoMultithreading);
+#endif
 
           ktx_uint32_t row_pitch = ktxTexture_GetRowPitch(m_ptr.get(), 0);      
           ktx_uint32_t elem_size = ktxTexture_GetElementSize(m_ptr.get());      
@@ -315,23 +340,14 @@ namespace ktx
                                   swizzle.c_str());
 
           result = ktxTexture2_CompressBasisEx(ktxTexture2(m_ptr.get()), &bopts);
-          printf("%d %d\n", result, ktxTexture2(m_ptr.get()));
-          printf("%d %d\n", row_pitch, elem_size);
-          printf("Compression %d\n", supercompressionScheme());
 
           result = ktxTexture2_DeflateZstd(ktxTexture2(m_ptr.get()), 18);
-          printf("%d %d\n", result, ktxTexture2(m_ptr.get()));
-          printf("%d %d\n", row_pitch, elem_size);
 
           ktx_size_t ktx_data_size = 0;
           ktx_uint8_t* ktx_data = nullptr;
           result = ktxTexture_WriteToMemory(m_ptr.get(), &ktx_data, &ktx_data_size);
-
-          printf("%d %d\n", result, ktxTexture2(m_ptr.get()));
-          printf("%d %d\n", row_pitch, ktx_data_size);
           
           const auto p = ktxTexture_GetData(m_ptr.get());
-          printf("%d %d\n", p, ktx_data);
 
           return emscripten::val(
             emscripten::typed_memory_view(ktx_data_size,
@@ -652,6 +668,14 @@ EMSCRIPTEN_BINDINGS(ktx)
         .value("LIBRARY_NOT_LINKED", KTX_LIBRARY_NOT_LINKED)
         ;
 
+    enum_<ktx_pack_uastc_flag_bits_e>("UastcFlags")
+        .value("LEVEL_FASTEST", KTX_PACK_UASTC_LEVEL_FASTEST)
+        .value("LEVEL_FASTER", KTX_PACK_UASTC_LEVEL_FASTER)
+        .value("LEVEL_DEFAULT", KTX_PACK_UASTC_LEVEL_DEFAULT)
+        .value("LEVEL_SLOWER", KTX_PACK_UASTC_LEVEL_SLOWER)
+        .value("LEVEL_VERYSLOW", KTX_PACK_UASTC_LEVEL_VERYSLOW)
+    ;
+
     enum_<ktx_texture_transcode_fmt_e>("TranscodeTarget")
         .value("ETC1_RGB", KTX_TTF_ETC1_RGB)
         .value("BC1_RGB", KTX_TTF_BC1_RGB)
@@ -670,6 +694,7 @@ EMSCRIPTEN_BINDINGS(ktx)
         .value("RGB565", KTX_TTF_RGB565)
         .value("BGR565", KTX_TTF_BGR565)
         .value("RGBA4444", KTX_TTF_RGBA4444)
+        .value("RGBA8888", KTX_TTF_RGBA32)
         .value("PVRTC2_4_RGB", KTX_TTF_PVRTC2_4_RGB)
         .value("PVRTC2_4_RGBA", KTX_TTF_PVRTC2_4_RGBA)
         .value("ETC", KTX_TTF_ETC)
@@ -710,6 +735,7 @@ EMSCRIPTEN_BINDINGS(ktx)
         //.class_function("createFromMemory", &ktx::texture::createFromMemory)
         //.class_function("createFromMemory", &ktx::texture::createFromMemory)
         // .property("data", &ktx::texture::getData)
+        .property("dataSize", &ktx::texture::getDataSize)
         .property("baseWidth", &ktx::texture::baseWidth)
         .property("baseHeight", &ktx::texture::baseHeight)
         .property("isPremultiplied", &ktx::texture::isPremultiplied)
