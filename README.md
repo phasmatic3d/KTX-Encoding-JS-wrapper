@@ -1,6 +1,6 @@
-# ppc-ktx
+# KTX-Encoding-JS-wrapper
 
-- git clone https://github.com/phasmatic3d/ppc-ktx.git
+- git clone https://github.com/phasmatic3d/KTX-Encoding-JS-wrapper.git
 - git submodule update  --init --recursive
 - emsdk activate latest
 - emsdk_env.bat
