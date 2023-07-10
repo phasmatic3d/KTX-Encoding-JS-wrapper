@@ -238,6 +238,12 @@ namespace ktx
             return ktxTexture_NeedsTranscoding(m_ptr.get());
         }
 
+        bool isSRGB() const
+        {
+            const auto df = ktxTexture2_GetOETF_e(ktxTexture2(m_ptr.get()));
+            return KHR_DF_TRANSFER_SRGB == df;
+        }
+
         bool isPremultiplied() const
         {
             return (m_ptr->classId == ktxTexture2_c
@@ -740,6 +746,7 @@ EMSCRIPTEN_BINDINGS(ktx)
         .property("dataSize", &ktx::texture::getDataSize)
         .property("baseWidth", &ktx::texture::baseWidth)
         .property("baseHeight", &ktx::texture::baseHeight)
+        .property("isSRGB", &ktx::texture::isSRGB)
         .property("isPremultiplied", &ktx::texture::isPremultiplied)
         .property("needsTranscoding", &ktx::texture::needsTranscoding)
         .property("numComponents", &ktx::texture::numComponents)
